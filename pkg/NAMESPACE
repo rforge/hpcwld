@@ -1,1 +1,1 @@
-export(Wld,FromSWF,ToSWF,DataToSWF,DMC)
+export(Wld,FromSWF,ToSWF,DataToSWF,DMC,StabC)
