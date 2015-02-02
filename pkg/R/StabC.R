@@ -1,6 +1,8 @@
 StabC <-
-function(s,p=gendistr(s),maxiter=10000,method="monte-carlo")
+function(s,p,maxiter=10000,method="monte-carlo")
 {
+require(multicool)
+require(partitions)
 C=0
 if(method=="monte-carlo") 
 {
@@ -42,6 +44,21 @@ if(method=="more-memory")
       dim=c(q,q*P(q)))),dim=c(P(q),q))
     probs=t(array(p[1:q],dim=c(q,P(q))))^n/factorial(n)
     C=C+sum(factorial(rowSums(n)-1)*apply(probs,1,prod)*sum(p[(s+1-q):s]))
+  }
+}
+if(method=="progressive") 
+{
+  n=vector(mode="numeric",length=s) 
+  for(q in 1:s) 
+  {
+    parts_q=parts(q)
+    num_parts=dim(parts_q)[2]
+    for (i in 1:num_parts) 
+    {
+      part=parts_q[,i]
+      #for(j in 1:s) n[j]=sum(part==j)
+      C=C+multinom(part[part>0])*prod(p[part])*sum(p[(s+1-q):s])/sum(part>0)
+    }
   }
 }
 return(1/C)
