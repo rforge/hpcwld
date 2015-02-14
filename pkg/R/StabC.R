@@ -1,8 +1,6 @@
 StabC <-
 function(s,p,maxiter=10000,method="monte-carlo")
 {
-require(multicool)
-require(partitions)
 C=0
 if(method=="monte-carlo") 
 {
