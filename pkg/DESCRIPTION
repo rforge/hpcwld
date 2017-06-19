@@ -1,6 +1,6 @@
 Package: hpcwld
-Version: 0.5
-Date: 2015-02-14
+Version: 0.6a
+Date: 2017-06-19
 Title: High Performance Cluster Models Based on Kiefer-Wolfowitz Recursion
 Authors@R: c(person("Alexander", "Rumyantsev", role = c("aut", "cre"), 
 	email = "ar0@sampo.ru"))
