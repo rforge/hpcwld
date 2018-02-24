@@ -43,7 +43,7 @@ Mathematical Statistics related to modeling of information systems". Book of Abs
 Alexander Rumyantsev (Institute of Applied Mathematical Research, Karelian Research Centre, RAS)
 }
 \examples{
-StabC(s=2,p=c(.5,.5))
+ApproxC(s=2,p=c(.5,.5), depth=3)
 # returns the constant for a 2-server model, 
 # where a task needs 1 or 2 cores with equal probability
 }

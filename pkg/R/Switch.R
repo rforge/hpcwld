@@ -1,6 +1,5 @@
-rm(list=ls())
-
-hpc = function(lambda = 1, mu=1, n=1000, totalServ=1, k1=5, k2=5,  r=c(0.5,2), switching_mode="other")
+hpc <-
+function(lambda = 1, mu=1, n=100, totalServ=1, k1=5, k2=5,  r=c(0.5,2), NServ = sample(1:totalServ, n, replace=TRUE, prob=rep(1/totalServ,totalServ) ), JobSize = rexp(n, mu), ArrivalTime = c(0,cumsum(rexp(n-1, lambda ))),  switching_mode="other")
 {
   event=vector() # Type of event: A=arrival, D=departure, S=switch
   event.task=vector() # Task related to event, if any
@@ -13,15 +12,10 @@ hpc = function(lambda = 1, mu=1, n=1000, totalServ=1, k1=5, k2=5,  r=c(0.5,2), s
   sum.workload = vector()
   waiting.time=vector()
   service.time=vector()
-  response.time=vector()
   task.delay=vector()
+  lost.job = vector()
   start.service.time=vector()
-
-  # Set up driving sequences
-  ArrivalTime = c(0,cumsum(rexp(n-1, lambda ))) #lambda < mu
-  JobSize = rexp(n, mu)
-  NServ = sample(1:totalServ, n, replace=TRUE, prob=rep(1/totalServ,totalServ) )
-
+  
   # Initialize the recursion
   i=1
   event[i] = "A"
@@ -33,25 +27,26 @@ hpc = function(lambda = 1, mu=1, n=1000, totalServ=1, k1=5, k2=5,  r=c(0.5,2), s
   task.inthesystem[[1]] = 1
   num.at.service[1] = 1
   speed[1]=ifelse(JobSize[1]>k2,2,1)
-
+  lost.job[1] = 0
   sum.workload[i]=0 
-  response.time[i]=0
+  # response.time[i]=0
   waiting.time[i]=0
-  task.delay[i]=0  
-
+  #task.delay[i]=0
+  
+  
   # Perform the recursion  
   while(counter.of.events["D"]<n){
-	# First we determine the ongoing event. We find the nearest between the three events: A, D or S  
+    # First we determine the ongoing event. We find the nearest between the three events: A, D or S  
     nearest.arrival=ifelse(counter.of.events["A"]<n,ArrivalTime[counter.of.events["A"]+1],Inf)
     nearest.departure = ifelse(num.at.service[i]>0,event.time[i] + min(unlist(res.job[[i]])[ 1:num.at.service[i] ])/r[speed[i]],Inf)
     if(switching_mode=="arrivals" || switching_mode=="arr_and_dep") nearest.switch=Inf
     else if(switching_mode=="other") nearest.switch = ifelse(speed[i]==2,(sum(res.job[[i]])-k1)/r[speed[i]] + event.time[i],Inf)
-
+    
     i=i+1 # Now we make the step
-
+    
     event.time[i] = min(nearest.arrival, nearest.departure, nearest.switch)
-
-	# Now we set up the current variables
+    
+    # Now we set up the current variables
     if(event.time[i] == nearest.arrival) {
       event.task[i] = which(ArrivalTime==nearest.arrival) # номер приходящей
       event[i] = "A"
@@ -64,9 +59,9 @@ hpc = function(lambda = 1, mu=1, n=1000, totalServ=1, k1=5, k2=5,  r=c(0.5,2), s
     if(event.time[i] == nearest.switch)
     {
       event[i] = "S"
-    }	  
+    }   
     counter.of.events[event[i]]=counter.of.events[event[i]]+1
-
+    
     res.job[[i]]=(res.job[[i-1]]-(event.time[i]-event.time[i-1])*r[speed[i-1]]*(1:length(task.inthesystem[[i-1]])<=num.at.service[i-1]))
     
     if(event[i]=="A"){
@@ -75,7 +70,7 @@ hpc = function(lambda = 1, mu=1, n=1000, totalServ=1, k1=5, k2=5,  r=c(0.5,2), s
       res.job[[i]]=c(res.job[[i]],JobSize[event.task[i]])           
       if(sum(res.job[[i]]) > k2) speed[i] = 2
       else if(sum(res.job[[i]]) < k1) speed[i] = 1
-        else speed[i] = speed[i-1]
+      else speed[i] = speed[i-1]
     }
     
     if(event[i]=="D"){
@@ -86,7 +81,7 @@ hpc = function(lambda = 1, mu=1, n=1000, totalServ=1, k1=5, k2=5,  r=c(0.5,2), s
       task.inthesystem[[i]]=setdiff(task.inthesystem[[i-1]],event.task[i]) 
       res.job[[i]]=res.job[[i]][-which(task.inthesystem[[i-1]]==event.task[i])]
     }
-
+    
     if(event[i]=="S"){
       speed[i] = 1
       task.inthesystem[[i]]=task.inthesystem[[i-1]]
@@ -94,21 +89,15 @@ hpc = function(lambda = 1, mu=1, n=1000, totalServ=1, k1=5, k2=5,  r=c(0.5,2), s
     num.at.service[i]=sum(cumsum(NServ[task.inthesystem[[i]]])<=totalServ)  
     
     start.service.time[setdiff(task.inthesystem[[i]][1:num.at.service[i]],task.inthesystem[[i-1]][1:num.at.service[i-1]])]=event.time[i]
-
-    ###################################################
-    #waiting.time[k]=start.service.time[k]-ArrivalTime[k] 
-    #service.time[k]=response.time[k]-start.service.time[k]
-    #response time
-    #task.delay[k]=response.time[k]/waiting.time[k]
-    ###################################################
+    
+    lost.job[i] = speed[i-1]*(event.time[i]-event.time[i-1])*(totalServ - sum(NServ[num.at.service[i]]) )*(length(task.inthesystem[[i]])>totalServ)
+    
   }
  
-  return(data.frame(event, event.time,  speed,  num.at.service, sapply(res.job, sum)))
+  return(list(event, event.time,  speed, start.service.time, num.at.service, lost.job, sapply(res.job, sum)))
 }
 
 x=hpc()
-#plot(x$unlist.event.time., x$sapply.res.job..sum.,type="l")
-
 
 
 #**************************
@@ -127,11 +116,18 @@ W=0 #average workload
 
 for(i in 1:num.iter) {
 	X=hpc(k1=k,k2=k,r=r)
-	E=E+sum(sapply(1:(length(X$event.time)-1), function(i){ (X$event.time[i+1]-X$event.time[i])*ifelse(X$num.at.service[i]==0,e0,e[X$speed[i]]) } ))/(max(X$event.time)*num.iter)
-	W=W+sum(sapply(1:(length(X$event.time)-1), function(i){Dt=X$event.time[i+1]-X$event.time[i]; Dt*X$sapply.res.job..sum.[i]-.5*X$num.at.service[i]*r[X$speed[i]]*Dt^2} ))/(max(X$event.time)*num.iter)
+	E=E+sum(sapply(1:(length(X[[2]])-1), function(i){ (X[[2]][i+1]-X[[2]][i])*ifelse(X[[5]][i]==0,e0,e[X[[3]][i]]) } ))/(max(X[[2]])*num.iter)
+	W=W+sum(sapply(1:(length(X[[2]])-1), function(i){Dt=X[[2]][i+1]-X[[2]][i]; Dt*X[[7]][i]-.5*X[[5]][i]*r[X[[3]][i]]*Dt^2} ))/(max(X[[2]])*num.iter)
 }
 return(c(E, W))
 }
+
+#response time for each task
+response.time = x[[2]][which(x[[1]]=="D")] - x[[2]][which(x[[1]]=="A")]
+#the time spent in the queue for each task
+waiting.time = x[[4]]-x[[2]][which(x[[1]]=="A")]
+
+task.delay=response.time/waiting.time
 
 #усреднение траекторий
 res=sapply(0:50,energy_workload)
