@@ -1,3 +1,5 @@
 export(Wld,ToSWF, FromSWF  ,ApproxC,   DMC, DataToSWF)
 importFrom(multicool, multinom)
+importFrom("stats", "convolve", "ecdf", "median", "rexp")
+importFrom("utils", "write.table")
 
